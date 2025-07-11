@@ -6,7 +6,7 @@ on:
   push:
     branches:
     ####### CHANGE THIS TO THE BRANCH NAME YOU NEED
-      - dev # The branch to which the workflow will be triggered
+      - dev-code # The branch to which the workflow will be triggered
     paths:
     ####### CHANGE THIS TO THE PATH NAME YOU NEED
       - 'sql_scripts/**' # The path to the folder containing the SQL scripts to be executed
