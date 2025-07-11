@@ -1,0 +1,75 @@
+###### NAME OF YOUR GITHUB ACTION
+name: adam-lab
+
+# Controls when the action will run. 
+on:
+  push:
+    branches:
+    ####### CHANGE THIS TO THE BRANCH NAME YOU NEED
+      - dev # The branch to which the workflow will be triggered
+    paths:
+    ####### CHANGE THIS TO THE PATH NAME YOU NEED
+      - 'sql_scripts/**' # The path to the folder containing the SQL scripts to be executed
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  deploy-snowflake-changes-job:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          ref: dev # The branch to which the workflow will be triggered
+
+      - name: Use Python 3.8.x
+        uses: actions/setup-python@v2.2.1
+        with:
+          python-version: 3.8.x
+      
+      - name: Create Private Key File from Secret
+        # Writes the key content from secret to a temporary file
+        run: |
+          echo "Creating temporary private key file..."
+          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/snowflake_key.p8
+          # Ensure only the runner user can read it
+          chmod 600 /tmp/snowflake_key.p8
+          echo "Temporary private key file created at /tmp/snowflake_key.p8"
+
+      - name: Create connection.toml
+        run: |
+          cat <<EOF > connection.toml
+          [myconnection]
+          authenticator = "snowflake_jwt"
+          private_key_file = "/tmp/snowflake_key.p8"
+          account = "${{ secrets.SF_ACCOUNT }}"
+          user = "${{ secrets.SF_USERNAME }}"
+          role = "${{ secrets.SF_ROLE }}"
+          database = "${{ secrets.SF_DATABASE }}"
+          warehouse = "${{ secrets.SF_WAREHOUSE }}"         
+          schema = "${{ secrets.SF_SCHEMA }}"
+          EOF
+          cat connection.toml
+          chown $USER connection.toml
+          chmod +rwx connection.toml
+
+      - name: Run schemachange
+        run: |
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          python --version
+          echo "Step 1: Installing schemachange"
+          pip install schemachange
+          
+          echo "Step 2: Running schemachange"
+          schemachange --config-folder $GITHUB_WORKSPACE/config
+      
+      - name: Clean up Private Key File
+        # Ensures the temporary key file is removed after the run
+        if: always() # Runs even if the 'Run schemachange' step fails
+        run: |
+          echo "Cleaning up temporary private key file..."
+          rm -f /tmp/snowflake_key.p8
+          echo "Temporary private key file removed."
