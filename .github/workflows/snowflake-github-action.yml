@@ -23,7 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          ref: dev # The branch to which the workflow will be triggered
+          ref: dev-code # The branch to which the workflow will be triggered
 
       - name: Use Python 3.8.x
         uses: actions/setup-python@v2.2.1
